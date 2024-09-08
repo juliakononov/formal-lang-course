@@ -44,9 +44,10 @@ def test_get_graph_data_fail():
 
 
 def test_create_and_save_two_cycles_graph(tmp_path):
-    expected_graph = read_graph_from_dot(
-        TESTS / Path("resources/test_graph_utils/test_create_and_save_two_cycles_graph")
+    expected_path = TESTS / Path(
+        "resources/test_graph_utils/test_create_and_save_two_cycles_graph"
     )
+    expected_graph = read_graph_from_dot(expected_path)
 
     path = tmp_path / "tmp_file.dot"
     create_and_save_two_cycles_graph(3, 4, ("a", "b"), path)
