@@ -1,10 +1,15 @@
-from project.graph_utils import *
 from pathlib import Path
 
 import pytest
 import networkx as nx
 
 from scripts.shared import TESTS
+from project.graph_utils import (
+    GraphData,
+    get_graph_data,
+    read_graph_from_dot,
+    create_and_save_two_cycles_graph,
+)
 
 
 def test_get_graph_data_from_bzip_graph():
