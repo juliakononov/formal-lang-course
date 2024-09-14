@@ -61,7 +61,9 @@ class TestGraphToNfa:
             pytest.param("wc", set(), set(), id="wc"),
         ],
     )
-    def test_graph_to_nfa_from_dataset(self, graph_name: str, start_st: set[int], final_st: set[int]):
+    def test_graph_to_nfa_from_dataset(
+        self, graph_name: str, start_st: set[int], final_st: set[int]
+    ):
         graph = get_graph(graph_name)
         nfa = graph_to_nfa(graph, start_st, final_st)
 

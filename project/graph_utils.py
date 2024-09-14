@@ -9,6 +9,7 @@ __all__ = [
     "GraphData",
     "get_graph_data",
     "read_graph_from_dot",
+    "get_graph",
     "create_and_save_two_cycles_graph",
 ]
 
