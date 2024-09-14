@@ -1,4 +1,3 @@
-import pytest
 import networkx as nx
 
 from project.fa_utils import regex_to_dfa

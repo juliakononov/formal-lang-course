@@ -2,7 +2,6 @@ from typing import Set
 
 from pyformlang.finite_automaton import DeterministicFiniteAutomaton
 from pyformlang.finite_automaton import NondeterministicFiniteAutomaton
-from pyformlang.finite_automaton import NondeterministicTransitionFunction
 from pyformlang.finite_automaton import State
 from pyformlang.finite_automaton import Symbol
 from pyformlang.regular_expression import Regex
