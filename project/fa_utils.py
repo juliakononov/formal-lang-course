@@ -17,13 +17,11 @@ def graph_to_nfa(
     graph: MultiDiGraph, start_states: Set[int], final_states: Set[int]
 ) -> NondeterministicFiniteAutomaton:
     states = set(State(n) for n in graph.nodes)
-    transition = NondeterministicTransitionFunction()
     start_states = (State(st) for st in start_states) if start_states else states
     final_states = (State(st) for st in final_states) if final_states else states
 
     nfa = NondeterministicFiniteAutomaton(
         states=states,
-        transition_function=transition,
         start_state=start_states,
         final_states=final_states,
     )
