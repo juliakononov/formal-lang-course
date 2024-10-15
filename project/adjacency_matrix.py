@@ -10,6 +10,7 @@ class AdjacencyMatrixFA:
         if fa is None:
             self.num_sts = 0
             self.st_to_idx = {}
+            self.idx_to_st = {}
             self.start_sts = set()
             self.final_sts = set()
             self.adjacency_matrices = {}
@@ -17,6 +18,7 @@ class AdjacencyMatrixFA:
 
         self.num_sts = len(fa.states)
         self.st_to_idx: dict[State, int] = {st: i for i, st in enumerate(fa.states)}
+        self.idx_to_st: dict[int, State] = {i: st for st, i in self.st_to_idx.items()}
         self.start_sts: set[State] = fa.start_states
         self.final_sts: set[State] = fa.final_states
         self.adjacency_matrices: dict[Symbol, csc_matrix] = {}
