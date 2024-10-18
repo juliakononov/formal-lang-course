@@ -30,11 +30,11 @@ def hellings_based_cfpq(
     cfg = cfg_to_weak_normal_form(cfg)
 
     epsilon_prods, term_prods, nonterm_prods = classify_productions(cfg.productions)
-    adjacency_matrix = {(n, n, e) for n in graph.nodes for e in epsilon_prods} | {
-        (s, f, t)
-        for s, f, l in graph.edges.data("label")
-        if l in term_prods
-        for t in term_prods[l]
+    adjacency_matrix = {(n, n, eps) for n in graph.nodes for eps in epsilon_prods} | {
+        (start, final, term)
+        for start, final, lbl in graph.edges.data("label")
+        if lbl in term_prods
+        for term in term_prods[lbl]
     }
     queue = adjacency_matrix.copy()
 
