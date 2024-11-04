@@ -1,5 +1,5 @@
 from pyformlang.cfg import CFG
-from pyformlang.rsa import RecursiveAutomaton, Box
+from pyformlang.rsa import RecursiveAutomaton
 from pyformlang.finite_automaton import NondeterministicFiniteAutomaton, State, Symbol
 from project.adjacency_matrix import AdjacencyMatrixFA
 from pyformlang.finite_automaton.epsilon_nfa import EpsilonNFA
