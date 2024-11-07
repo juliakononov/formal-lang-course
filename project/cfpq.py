@@ -1,7 +1,13 @@
 from pyformlang.cfg import CFG, Terminal, Variable, Epsilon
+from pyformlang.rsa import RecursiveAutomaton
 import networkx as nx
+
+from project.adjacency_matrix import AdjacencyMatrixFA, intersect_automata
 from project.cfg_utils import cfg_to_weak_normal_form
 from scipy.sparse import csc_matrix
+from pyformlang.finite_automaton import Symbol, State
+from project.fa_utils import graph_to_nfa
+from project.rsm_utils import boolean_decompress_rsm
 
 
 def classify_productions(productions):
@@ -115,4 +121,63 @@ def matrix_based_cfpq(
                 if idx_to_node[r] in start_nodes and idx_to_node[c] in final_nodes:
                     valid_pairs.add((idx_to_node[r], idx_to_node[c]))
 
+    return valid_pairs
+
+
+def tensor_based_cfpq(
+    rsm: RecursiveAutomaton,
+    graph: nx.DiGraph,
+    start_nodes: set[int] = None,
+    final_nodes: set[int] = None,
+) -> set[tuple[int, int]]:
+    rsm_m = boolean_decompress_rsm(rsm)
+    graph_m = AdjacencyMatrixFA(
+        graph_to_nfa(nx.MultiDiGraph(graph), start_nodes, final_nodes)
+    )
+
+    def delta(tc: csc_matrix) -> dict[Symbol, csc_matrix]:
+        res: dict[Symbol, csc_matrix] = {}
+        for i, j in zip(*tc.nonzero()):
+            rsm_i, rsm_j = i % rsm_m.num_sts, j % rsm_m.num_sts
+            st1, st2 = rsm_m.idx_to_st[rsm_i], rsm_m.idx_to_st[rsm_j]
+            if st1 in rsm_m.start_sts and st2 in rsm_m.final_sts:
+                assert st1.value[0] == st2.value[0]
+                nonterm = st1.value[0]
+
+                graph_i, graph_j = i // rsm_m.num_sts, j // rsm_m.num_sts
+                if (
+                    nonterm in graph_m.adjacency_matrices
+                    and graph_m.adjacency_matrices[nonterm][graph_i, graph_j]
+                ):
+                    continue
+
+                if nonterm not in res:
+                    res[nonterm] = csc_matrix(
+                        (graph_m.num_sts, graph_m.num_sts), dtype=bool
+                    )
+                res[nonterm][graph_i, graph_j] = True
+        return res
+
+    while True:
+        transitive_closure = intersect_automata(graph_m, rsm_m).transitive_closure()
+        m_delta = delta(transitive_closure)
+        if not m_delta:
+            break
+        for symbol in m_delta.keys():
+            if symbol not in graph_m.adjacency_matrices:
+                graph_m.adjacency_matrices[symbol] = m_delta[symbol]
+            else:
+                graph_m.adjacency_matrices[symbol] += m_delta[symbol]
+
+    valid_pairs: set[tuple[int, int]] = set()
+    start_m = graph_m.adjacency_matrices.get(rsm.initial_label)
+    if start_m is None:
+        return valid_pairs
+
+    for start in start_nodes:
+        for final in final_nodes:
+            if start_m[
+                graph_m.st_to_idx[State(start)], graph_m.st_to_idx[State(final)]
+            ]:
+                valid_pairs.add((start, final))
     return valid_pairs
