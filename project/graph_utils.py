@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Tuple, Set
-from pyformlang.finite_automaton import Symbol
 
 import cfpq_data
 import networkx as nx
