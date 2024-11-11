@@ -184,7 +184,6 @@ def tensor_based_cfpq(
     return valid_pairs
 
 
-# @dataclass
 class GssV:
     rsm_st: RsmSt
     graph_st: int
@@ -204,7 +203,6 @@ class GssV:
         return hash((self.rsm_st, self.graph_st))
 
 
-# @dataclass
 class Config:
     rsm_st: RsmSt
     graph_st: int
