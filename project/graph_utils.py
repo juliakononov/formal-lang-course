@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Tuple, Set
+from pyformlang.finite_automaton import Symbol
 
 import cfpq_data
 import networkx as nx
@@ -11,6 +12,7 @@ __all__ = [
     "read_graph_from_dot",
     "get_graph",
     "create_and_save_two_cycles_graph",
+    "get_graph_node_edges",
 ]
 
 
@@ -43,6 +45,13 @@ def save_graph_to_dot(graph: nx.MultiDiGraph, output_file: Path) -> None:
 
 def read_graph_from_dot(path: Path) -> nx.DiGraph:
     return nx.DiGraph(nx.drawing.nx_pydot.read_dot(path))
+
+
+def get_graph_node_edges(g: nx.MultiDiGraph, from_nd: Any) -> dict[Any, set[Any]]:
+    edges = {}
+    for _, to_nd, lbl in g.edges(from_nd, data="label"):
+        edges.setdefault(lbl, set()).add(to_nd)
+    return edges
 
 
 def create_and_save_two_cycles_graph(
