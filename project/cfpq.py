@@ -7,7 +7,8 @@ from project.cfg_utils import cfg_to_weak_normal_form
 from scipy.sparse import csc_matrix
 from pyformlang.finite_automaton import Symbol, State
 from project.fa_utils import graph_to_nfa
-from project.rsm_utils import boolean_decompress_rsm
+from project.rsm_utils import boolean_decompress_rsm, get_rsm_st_edges, RsmSt
+from project.graph_utils import get_graph_node_edges
 
 
 def classify_productions(productions):
@@ -181,3 +182,145 @@ def tensor_based_cfpq(
             ]:
                 valid_pairs.add((start, final))
     return valid_pairs
+
+
+class GssV:
+    rsm_st: RsmSt
+    graph_st: int
+
+    def __init__(self, rsm_st: RsmSt, graph_st: int):
+        self.rsm_st = rsm_st
+        self.graph_st = graph_st
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, GssV)
+            and self.rsm_st == other.rsm_st
+            and self.graph_st == other.graph_st
+        )
+
+    def __hash__(self):
+        return hash((self.rsm_st, self.graph_st))
+
+
+class Config:
+    rsm_st: RsmSt
+    graph_st: int
+    gss_v: GssV
+
+    def __init__(self, rsm_st: RsmSt, graph_st: int, gss_v: GssV):
+        self.rsm_st = rsm_st
+        self.graph_st = graph_st
+        self.gss_v = gss_v
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, Config)
+            and self.rsm_st == other.rsm_st
+            and self.graph_st == other.graph_st
+            and self.gss_v == other.gss_v
+        )
+
+    def __hash__(self):
+        return hash((self.rsm_st, self.graph_st, self.gss_v))
+
+
+def get_new_configs(
+    conf: Config,
+    gss: nx.MultiDiGraph,
+    graph: nx.DiGraph,
+    rsm: RecursiveAutomaton,
+    res: set[tuple[int, int]],
+    init_gss_v: GssV,
+) -> set[Config]:
+    new_configs = set()
+    graph_edges: dict[any, set[any]] = get_graph_node_edges(
+        nx.MultiDiGraph(graph), conf.graph_st
+    )
+    rsm_edges: dict[Symbol, set[RsmSt]] = get_rsm_st_edges(rsm, conf.rsm_st)
+
+    # 1.
+    labels = set(graph_edges.keys()) & set(rsm_edges.keys())
+    for lbl in labels:
+        for rsm_st in rsm_edges[lbl]:
+            for graph_st in graph_edges[lbl]:
+                new_configs.add(Config(rsm_st, graph_st, conf.gss_v))
+
+    # 2.
+    for rsm_lbl in rsm_edges.keys():
+        if rsm_lbl in rsm.labels:
+            for rsm_start_st in rsm.get_box(rsm_lbl).start_state:
+                new_rsm_st = RsmSt(rsm_lbl, rsm_start_st)
+                new_gss_v = GssV(new_rsm_st, conf.graph_st)
+
+                if new_gss_v in gss.nodes and gss.nodes[new_gss_v]["pop_set"]:
+                    for graph_st in gss.nodes[new_gss_v]["pop_set"]:
+                        for rsm_st in rsm_edges[rsm_lbl]:
+                            gss.add_edge(new_gss_v, conf.gss_v, label=rsm_st)
+                            new_configs.add(Config(rsm_st, graph_st, conf.gss_v))
+                    continue
+
+                for rsm_st in rsm_edges[rsm_lbl]:
+                    gss.add_node(new_gss_v, pop_set=None)
+                    gss.add_edge(new_gss_v, conf.gss_v, label=rsm_st)
+
+                new_configs.add(Config(new_rsm_st, conf.graph_st, new_gss_v))
+
+    # 3.
+    if conf.rsm_st.st in rsm.get_box(conf.rsm_st.nonterm).final_states:
+        if gss.nodes[conf.gss_v]["pop_set"] is None:
+            gss.nodes[conf.gss_v]["pop_set"] = set()
+        gss.nodes[conf.gss_v]["pop_set"].add(conf.graph_st)
+
+        gss_edges: dict[RsmSt, set[GssV]] = get_graph_node_edges(gss, conf.gss_v)
+        for lbl in gss_edges.keys():
+            for gss_v in gss_edges[lbl]:
+                if gss_v == init_gss_v:
+                    res.add((conf.gss_v.graph_st, conf.graph_st))
+                    continue
+                new_configs.add(Config(lbl, conf.graph_st, gss_v))
+
+    return new_configs
+
+
+def gll_based_cfpq(
+    rsm: RecursiveAutomaton,
+    graph: nx.DiGraph,
+    start_nodes: set[int] = None,
+    final_nodes: set[int] = None,
+) -> set[tuple[int, int]]:
+    states = set(n for n in graph.nodes)
+    start_nodes = set(n for n in start_nodes) if start_nodes else states
+    final_nodes = set(n for n in final_nodes) if final_nodes else states
+
+    queue: set[Config] = set()
+    processed_config: set[Config] = set()
+    gss = nx.MultiDiGraph()
+    init_gss_v = GssV(RsmSt(Symbol("$"), State(0)), -1)
+    res = set()
+
+    # Initialization of configurations and gss nodes
+    for rsm_start in rsm.get_box(rsm.initial_label).start_state:
+        for graph_st in start_nodes:
+            rsm_st = RsmSt(rsm.initial_label, rsm_start)
+            gss_v = GssV(rsm_st, graph_st)
+
+            gss.add_node(gss_v, pop_set=None)
+            gss.add_edge(gss_v, init_gss_v, label=rsm_st)
+            config = Config(rsm_st, graph_st, gss_v)
+            queue.add(config)
+
+    # Configuration processing
+    while queue:
+        config = queue.pop()
+        if config in processed_config:
+            continue
+
+        processed_config.add(config)
+        queue |= get_new_configs(config, gss, graph, rsm, res, init_gss_v)
+
+    return {
+        (start_st, final_st)
+        for start_st, final_st in res
+        if start_st in start_nodes and final_st in final_nodes
+    }
